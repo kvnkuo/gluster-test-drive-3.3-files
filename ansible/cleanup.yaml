@@ -49,9 +49,31 @@
   - debug:
       msg: "{{ ssh_keys.stdout }}"
     tags:
-      - ssh                                                                                                                                                                  
-                                                                                                                                                                             
-  - name: deploy ssh key on rhgs4                                                                                                                                            
-    authorized_key: user=root key= "{{ ssh_keys.stdout }}"                                                                                                                   
+      - ssh                                                                                                                                                                 
+  - name: deploy ssh key on rhgs4 
+    authorized_key: 
+      user: root 
+      key: "{{ ssh_keys.stdout }}"
+      state: present
     delegate_to: rhgs4  
+    tags: 
+      - ssh
+
+- hosts: rhgs4                             
+  remote_user: root                        
+
+  tasks:                                   
+  - name: create a new cluster with rhgs4, rhgs5 and rhgs6 as members                  
+    command: sudo gluster peer probe "{{ item}}"                                       
+    with_items:                            
+      - rhgs5                              
+      - rhgs6                              
+
+  - name: copy materials to rhgs4          
+    copy:                                  
+      src: /home/student/materials/        
+      dest: /home/student/materials/       
+      owner: student                       
+      group: student                       
+      mode: 0644
 
