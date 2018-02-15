@@ -1,0 +1,12 @@
+---
+- hosts: rhgs1
+  remote_user: root
+
+  - name: copy materials to rhgs2          
+    copy:                                  
+      src: /home/student/materials/        
+      dest: /home/student/materials/       
+      owner: student                       
+      group: student                       
+      mode: 0644
+

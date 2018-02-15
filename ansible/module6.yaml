@@ -2,7 +2,83 @@
 - hosts: rhgs1
   remote_user: root
 
-  - name: copy materials to rhgs2          
+  tasks:
+  - name: stop gluster volume distvol
+    gluster_volume:
+      state: stopped
+      name: distvol
+    ignore_errors: yes
+
+  - name: stop gluster volume repvol
+    gluster_volume:
+      state: stopped
+      name: repvol
+    ignore_errors: yes
+
+  - name: remove gluster volume distvol
+    gluster_volume:
+      state: absent
+      name: distvol
+    ignore_errors: yes
+
+  - name: remove gluster volume repvol
+    gluster_volume:
+      state: absent
+      name: repvol
+    ignore_errors: yes
+
+  - name: split up the cluster
+    command: sudo gluster peer detach "{{ item }}"
+    with_items:
+      - rhgs2
+      - rhgs3
+      - rhgs4
+      - rhgs5
+      - rhgs6
+    ignore_errors: yes
+  
+  - name: create a new cluster with rhgs1, rhgs2 and rhgs3 as members
+    command: sudo gluster peer probe "{{ item }}"
+    with_items:
+      - rhgs2
+      - rhgs3
+
+  - name: create ssh keys for root
+    user:
+      name: root
+      generate_ssh_key: yes
+
+  - name: retrieve ssh public key for root from rhgs1
+    shell: cat /root/.ssh/id_rsa.pub
+    register: ssh_keys
+    tags:
+      - ssh
+
+  - debug:
+      msg: "{{ ssh_keys.stdout }}"
+    tags:
+      - ssh                                                                                                                                                                 
+
+  - name: deploy ssh key on rhgs4 
+    authorized_key: 
+      user: root 
+      key: "{{ ssh_keys.stdout }}"
+      state: present
+    delegate_to: rhgs4  
+    tags: 
+      - ssh
+
+- hosts: rhgs4                             
+  remote_user: root                        
+
+  tasks:                                   
+  - name: create a new cluster with rhgs4, rhgs5 and rhgs6 as members                  
+    command: sudo gluster peer probe "{{ item}}"                                       
+    with_items:                            
+      - rhgs5                              
+      - rhgs6                              
+
+  - name: copy materials to rhgs4          
     copy:                                  
       src: /home/student/materials/        
       dest: /home/student/materials/       
