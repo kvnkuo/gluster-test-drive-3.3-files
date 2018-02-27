@@ -1,41 +1,43 @@
 ---
-- hosts: rhgs1
+- hosts: all
   remote_user: root
 
   tasks:
-  - name: stop gluster volume distvol
-    gluster_volume:
+
+  - name: stop gluster service
+    systemd: 
+      name: glusterd
       state: stopped
-      name: distvol
-    ignore_errors: yes
 
-  - name: stop gluster volume repvol
-    gluster_volume:
-      state: stopped
-      name: repvol
-    ignore_errors: yes
-
-  - name: remove gluster volume distvol
-    gluster_volume:
-      state: absent
-      name: distvol
-    ignore_errors: yes
-
-  - name: remove gluster volume repvol
-    gluster_volume:
-      state: absent
-      name: repvol
-    ignore_errors: yes
-
-  - name: split up the cluster
-    command: sudo gluster peer detach "{{ item }}"
+  - name: Kill all remaining gluster processes
+    shell: /bin/bash -c 'pkill -9 {{ item }}'
     with_items:
-      - rhgs2
-      - rhgs3
-      - rhgs4
-      - rhgs5
-      - rhgs6
+      - glusterfs
+      - glusterfsd
     ignore_errors: yes
+
+  - name: Clear existing gluster configuration
+    file: 
+      path: "/var/lib/glusterd/{{ item }}"
+      state: absent
+    with_items:
+      - glusterd.info
+      - glustershd
+      - bitd
+      - glusterfind
+      - nfs
+      - peers
+      - quotad
+      - scub
+      - snaps
+      - ss_brick
+      - vols
+    ignore_errors: yes
+
+
+- hosts: rhgs1
+  remote_user: root
+  tasks:
 
   - name: create a new cluster with rhgs1, rhgs2 and rhgs3 as members
     command: sudo gluster peer probe "{{ item }}"
@@ -67,24 +69,15 @@
     delegate_to: rhgs4
     tags:
       - ssh
-
+ 
 - hosts: rhgs2
   remote_user: root
-
   tasks:
-  - name: copy materials to rhgs4
-    copy:
-      src: /home/student/materials/
-      dest: /home/student/materials/
-      owner: student
-      group: student
-      mode: 0644
-
-
+ 
 - hosts: rhgs4
   remote_user: root
-
   tasks:
+
   - name: create a new cluster with rhgs4, rhgs5 and rhgs6 as members
     command: sudo gluster peer probe "{{ item}}"
     with_items:
