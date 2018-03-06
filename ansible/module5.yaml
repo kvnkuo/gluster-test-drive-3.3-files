@@ -1,0 +1,17 @@
+---
+- hosts: all
+  remote_user: root
+
+  tasks:
+  - name: Modify glusterd.vol to allow insecure ports
+    lineinfile:
+      path: /etc/glusterfs/glusterd.vol
+      insertbefore: 'end-volume'
+      line: '    option rpc-auth-allow-insecure on'
+
+  - name: Restart glusterd
+    systemd:
+      name: glusterd
+      state: restarted
+      daemon_reload: yes
+
