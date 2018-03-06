@@ -34,6 +34,11 @@
       - vols
     ignore_errors: yes
 
+  - name: Start glusterd again
+    systemd:
+      name: glusterd
+      state: started
+
 
 - hosts: rhgs1
   remote_user: root
@@ -83,12 +88,4 @@
     with_items:
       - rhgs5
       - rhgs6
-
-  - name: copy materials to rhgs4
-    copy:
-      src: /home/student/materials/
-      dest: /home/student/materials/
-      owner: student
-      group: student
-      mode: 0644
 
