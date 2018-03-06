@@ -1,101 +1,83 @@
----
-- hosts: all
-  remote_user: root
-  tasks:
+---                                 
+- hosts: all                        
+  remote_user: root                 
+  tasks:                            
 
-  - name: Clear LVM
-    lvg:
-      vg: "{{ item }}"
-      state: absent
-      force: yes
-    with_items: 
-      - rhgs_vg1
-      - rhgs_vg2
-      - rhgs_vg3
+  - name: Delete snapshots if they exist                                 
+    command: sudo gluster snapshot delete all                            
 
+  - name: stop gluster service      
+    systemd:                        
+      name: glusterd                
+      state: stopped                
 
-- hosts: rhgs1
-  remote_user: root
+  - name: Kill all remaining gluster processes                           
+    shell: /bin/bash -c 'pkill -9 {{ item }}'                            
+    with_items:                     
+      - glusterfs                   
+      - glusterfsd                  
+    ignore_errors: yes              
 
-  tasks:
+  - name: Clear existing gluster configuration                           
+    file:                           
+      path: "/var/lib/glusterd/{{ item }}"                               
+      state: absent                 
+    with_items:                     
+      - glusterd.info               
+      - glustershd                  
+      - bitd                        
+      - glusterfind                 
+      - nfs                         
+      - peers                       
+      - quotad                      
+      - scub                        
+      - snaps                       
+      - ss_brick                    
+      - vols                        
+    ignore_errors: yes              
 
-  - name: stop gluster volume repvol
-    gluster_volume:
-      state: stopped
-      name: repvol
-    ignore_errors: yes
+  - name: Start glusterd again      
+    systemd:                        
+      name: glusterd                
+      state: started                
 
-  - name: stop gluster volume distvol
-    gluster_volume:
-      state: stopped
-      name: distvol
-    ignore_errors: yes
+  - name: Umount bricks             
+    mount:                          
+      path: "{{ item }}"            
+      state: unmounted              
+    with_items:                     
+      - /rhgs/brick_xvda            
+      - /rhgs/brick_xvdb            
+      - /rhgs/brick_xvdc            
+      - /rhgs/brick_xvdd            
 
-  - name: stop gluster volume mastervol
-    gluster_volume:
-      state: stopped
-      name: mastervol
-    ignore_errors: yes
-
-  - name: remove gluster volume repvol
-    gluster_volume:
-      state: absent
-      name: repvol
-    ignore_errors: yes
-
-  - name: remove gluster volume distvol
-    gluster_volume:
-      state: absent
-      name: distvol
-    ignore_errors: yes
-
-  - name: remove gluster volume mastervol
-    gluster_volume:
-      state: absent
-      name: mastervol
-    ignore_errors: yes
-
-  - name: copy materials to rhgs2
-    copy:
-      src: /home/student/materials/
-      dest: /home/student/materials/
-      owner: student
-      group: student
-      mode: 0644
-
-  - name: create a new cluster with rhgs1 and rhgs2 as members
-    command: sudo gluster peer probe "{{ item}}"
-    with_items:
-      - rhgs2
-
-- hosts: rhgs2
-  remote_user: root
-
-  tasks:
-
-  - name: copy materials to rhgs2
-    copy:
-      src: /home/student/materials/
-      dest: /home/student/materials/
-      owner: student
-      group: student
-      mode: 0644
+  - name: Clear LVM                 
+    lvg:                            
+      vg: "{{ item }}"              
+      state: absent                 
+      force: yes                    
+    with_items:                     
+      - rhgs_vg1                    
+      - rhgs_vg2                    
+      - rhgs_vg3                    
 
 
-- hosts: rhgs4
-  remote_user: root
+- hosts: rhgs1                      
+  remote_user: root                 
 
-  tasks:
+  tasks:                            
 
-  - name: stop gluster volume slavevol
-    gluster_volume:
-      state: stopped
-      name: slavevol
-    ignore_errors: yes
+  - name: create a new cluster with rhgs1 and rhgs2 as members           
+    command: sudo gluster peer probe "{{ item}}"                         
+    with_items:                     
+      - rhgs2                       
 
-  - name: remove gluster volume slavevol
-    gluster_volume:
-      state: absent
-      name: slavevol
-    ignore_errors: yes
+- hosts: rhgs2                      
+  remote_user: root                 
 
+  tasks:                            
+
+- hosts: rhgs4                      
+  remote_user: root                 
+
+  tasks:                  
