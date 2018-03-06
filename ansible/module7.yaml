@@ -3,6 +3,11 @@
   remote_user: root                 
   tasks:                            
 
+  - name: Ensure gluster is running on all nodes
+    systemd:
+      name: glusterd
+      state: started
+
   - name: Delete snapshots if they exist                                 
     command: sudo gluster snapshot delete all                            
 
